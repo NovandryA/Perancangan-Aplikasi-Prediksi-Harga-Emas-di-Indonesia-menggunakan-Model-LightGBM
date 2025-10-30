@@ -287,6 +287,13 @@ def render_home():
             st.markdown(f"**{t}**")
             st.caption(d)
 
+    st.divider()
+
+    st.markdown (
+        """Sumber data dari aplikasi perancangan ini adalah: <https://www.bi.go.id/id/statistik/informasi-kurs/transaksi-bi/Default.aspx> (Kurs USD/IDR),
+        <https://www.bi.go.id/id/statistik/indikator/bi-rate.aspx> (BI-Rate), dan <https://harga-emas.org/> (Harga Emas)."""
+    )
+
 
 
 # Halaman: Prediction
