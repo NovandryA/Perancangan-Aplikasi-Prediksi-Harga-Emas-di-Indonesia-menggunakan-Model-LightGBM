@@ -1,0 +1,79 @@
+{
+  "Delta1": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta2": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta3": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta4": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta5": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta6": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "delta"
+  },
+  "Delta7": {
+    "features": [
+      "Month",
+      "DayOfWeek",
+      "Gold_Price",
+      "USD_Buy_Rate",
+      "USD_Sell_Rate",
+      "BI_Rate"
+    ],
+    "target": "log"
+  }
+}
