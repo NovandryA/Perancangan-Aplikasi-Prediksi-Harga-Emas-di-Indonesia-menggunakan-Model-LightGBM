@@ -8,7 +8,7 @@ from pathlib import Path
 from io import BytesIO
 import plotly.graph_objects as go
 
-# Batas periode dataset (validasi tanggal)
+# validasi tanggal
 DATASET_START = date(2014, 1, 1)
 DATASET_END   = date(2024, 12, 31)
 MIN_ALLOWED   = DATASET_END + timedelta(days=1)
@@ -25,18 +25,16 @@ if VALID_PATH.exists():
     df_valid.columns = [c.strip().replace(" ", "_") for c in df_valid.columns]
     df_valid["Date"] = pd.to_datetime(df_valid["Date"])
 
-# =============================
+
 # Konfigurasi Halaman
-# =============================
 st.set_page_config(
     page_title="Prediksi Harga Emas — LightGBM",
     page_icon="🪙",
     layout="wide",
 )
 
-# =============================
+
 # CSS Custom
-# =============================
 CUSTOM_CSS = """
 <style>
     /* Global tweaks */
@@ -77,9 +75,8 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# =============================
+
 # Helper function
-# =============================
 def kpi_card(title: str, value: str, help_text: str | None = None):
     with st.container():
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
@@ -105,9 +102,8 @@ def placeholder_forecast_df(start: date, days: int = 7) -> pd.DataFrame:
     df = pd.DataFrame({"Date": dates, "Harga (Preview)": y})
     return df
 
-# =============================
+
 # Helpers untuk model
-# =============================
 def load_meta(meta_path: Path) -> dict:
     with open(meta_path, "r") as f:
         return json.load(f)
@@ -121,56 +117,56 @@ def _parse_bi_to_percent(x) -> float | None:
         return None
     s = str(x).strip().replace('%', '').replace(' ', '')
 
-    # cepat: murni angka
+    
     if re.fullmatch(r'\d+', s):
         v = int(s)
-        if 50 <= v < 1000:   # 575 -> 5.75 (basis points)
+        if 50 <= v < 1000:   
             return v / 100.0
-        return float(v)      # 5 -> 5.0
+        return float(v)    
 
     # ada koma/titik
     if ',' in s and '.' not in s:
-        # format Indo: 0,0575 atau 5,75
-        s = s.replace('.', '')           # buang pemisah ribuan kalau ada
+        
+        s = s.replace('.', '')           
         try:
             v = float(s.replace(',', '.'))
         except ValueError:
             return None
     elif '.' in s and ',' not in s:
-        # format EN: 5.75 (titik desimal)
+        #
         try:
             v = float(s)
         except ValueError:
             return None
     else:
-        # keduanya ada: gunakan pemisah TERAKHIR sbg desimal
+        
         last_comma = s.rfind(',')
         last_dot   = s.rfind('.')
         if last_comma > last_dot:
-            # koma desimal -> buang titik (ribuan)
+            
             s = s.replace('.', '')
             try:
                 v = float(s.replace(',', '.'))
             except ValueError:
                 return None
         else:
-            # titik desimal -> buang koma (ribuan)
+            
             s = s.replace(',', '')
             try:
                 v = float(s)
             except ValueError:
                 return None
 
-    # jika <=1, anggap fraksi (0.0575) -> persen
+   
     return v * 100.0 if v is not None and v <= 1.0 else v
 
 def normalize_bi_rate_to_str(series: pd.Series) -> pd.Series:
     pct = series.apply(_parse_bi_to_percent)
-    # format 2 desimal + koma + '%' (5,75%)
+
     return pct.map(lambda v: (f"{v:.2f}%".replace('.', ',')) if pd.notna(v) else None)
 
 def make_xlsx_bytes(df: pd.DataFrame) -> bytes:
-    # pastikan kolom tanggal berupa string YYYY-MM-DD agar tidak muncul "00:00:00"
+    
     if 'date' in df.columns:
         df = df.copy()
         df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
@@ -184,8 +180,8 @@ def make_xlsx_bytes(df: pd.DataFrame) -> bytes:
 
 def load_model_for_horizon(h: int):
     meta = load_meta(META_PATH)
-    target_kind = meta[f"Delta{h}"]["target"]            # "delta" / "log"
-    feat_cols   = meta[f"Delta{h}"]["features"]          # harus == 6 kolom single-shot
+    target_kind = meta[f"Delta{h}"]["target"]            
+    feat_cols   = meta[f"Delta{h}"]["features"]          
     model_path  = MODELS_DIR / f"Model_LightGBM_GOSS_Delta{h}_{target_kind}.pkl"
     model = joblib.load(model_path)
     return model, feat_cols, target_kind
@@ -213,9 +209,8 @@ def reconstruct_next(prev_level: float, pred: float, target_kind: str):
         delta = pred
     return next_level, delta
 
-# =============================
+
 # Sidebar Navigasi
-# =============================
 with st.sidebar:
     st.header("🪙 Prediksi Harga Emas Menggunakan LightGBM")
     nav = st.radio("Navigasi", ["Home", "Prediction", "About"], index=0)
@@ -231,9 +226,8 @@ with st.sidebar:
         mime="application/pdf",
         use_container_width=True)
 
-# =============================
+
 # Halaman: Home
-# =============================
 def render_home():
     left, right = st.columns([1.1, 1])
 
@@ -294,9 +288,8 @@ def render_home():
             st.caption(d)
 
 
-# =============================
+
 # Halaman: Prediction
-# =============================
 def render_prediction():
     st.title("Prediction")
     st.caption("Masukkan data hari ini untuk memprediksi harga emas hingga 7 hari ke depan.")
@@ -312,28 +305,28 @@ def render_prediction():
         if "df_valid" in globals() and isinstance(df_valid, pd.DataFrame) and not df_valid.empty:
             df_download = df_valid.copy()
         else:
-            # ganti path bila perlu
+          
             df_download = pd.read_excel("Dataset_HargaEmas_2025.xlsx")  
     except Exception as e:
         st.warning(f"Tidak bisa memuat dataset 2025: {e}")
 
     if df_download is not None and not df_download.empty:
-        # mapping nama kolom agar konsisten
+       
         rename_map = {}
         if "Tanggal" in df_download.columns:   rename_map["Tanggal"]    = "date"
         if "Gold_Price" in df_download.columns:rename_map["Gold_Price"] = "gold_price"
-        # cari kolom BI rate
+        
         for c in df_download.columns:
             lc = c.lower().replace(' ', '').replace('_','').replace('-','')
             if lc in ("birate","biratepersen","biratepercent","biratepersentase"):
                 rename_map[c] = "bi_rate"
         df_download = df_download.rename(columns=rename_map)
 
-        # normalisasi format BI-Rate
+    
         if "bi_rate" in df_download.columns:
             df_download["bi_rate"] = normalize_bi_rate_to_str(df_download["bi_rate"])
 
-        # urutkan kolom yang utama dulu
+        
         ordered_cols = [c for c in [
             "date", "gold_price", "USD_Sell_Rate", "USD_Buy_Rate", "bi_rate"
         ] if c in df_download.columns]
@@ -380,7 +373,7 @@ def render_prediction():
         st.error("Tanggal harus di luar periode dataset (pilih setelah 31 Desember 2024).")
         return
 
-    # 1 baris fitur single-shot dari form
+    
     x_dict = {
         "Month": tanggal.month,
         "DayOfWeek": tanggal.weekday(),
@@ -391,7 +384,7 @@ def render_prediction():
     }
     X_single = pd.DataFrame([x_dict])
 
-    # Pastikan metadata ada
+    
     if not META_PATH.exists():
         st.error(f"Metadata model tidak ditemukan: {META_PATH}. Pastikan folder 'models/' berisi file .pkl dan 'model_meta.json'.")
         return
@@ -453,7 +446,7 @@ def render_prediction():
     plot_df_renamed = plot_df[cols_to_plot].rename(columns=rename_map)
     fig = go.Figure()
 
-# Garis Harga Prediksi (hijau zamrud)
+# Garis Harga Prediksi 
     if "Harga Prediksi" in plot_df_renamed.columns:
         fig.add_trace(go.Scatter(
             x=plot_df_renamed.index,
@@ -464,7 +457,7 @@ def render_prediction():
             marker=dict(size=5)
         ))
 
-    # Garis Harga Aktual (ungu pastel)
+    # Garis Harga Aktual 
     if "Harga Aktual" in plot_df_renamed.columns:
         fig.add_trace(go.Scatter(
             x=plot_df_renamed.index,
@@ -558,7 +551,7 @@ def render_prediction():
             st.error(f"Model Δ{h} tidak bisa dimuat. Pastikan file ada di folder 'models/'.\nDetail: {e}")
             return
 
-        # align kolom (harus 6 fitur single-shot)
+        
         missing = [c for c in feat_cols if c not in X_single.columns]
         if missing:
             st.error(f"Model Δ{h} memerlukan fitur {missing}. Model kamu kemungkinan dilatih 'history-aware'. "
@@ -596,7 +589,7 @@ def render_prediction():
     prev_level = float(harga_emas)
 
     try:
-        meta = load_meta(META_PATH)  # cek dulu meta tersedia
+        meta = load_meta(META_PATH)  
     except Exception as e:
         st.error(f"Metadata model tidak ditemukan ({META_PATH}). Pastikan folder 'models/' berisi file .pkl dan 'model_meta.json'.\nDetail: {e}")
         return
@@ -622,16 +615,13 @@ def render_prediction():
         deltas.append(d)
         prev_level = next_level
 
-
-    # ——— Pastikan file model tersedia ———
     if not META_PATH.exists():
         st.error(f"Metadata model tidak ditemukan: {META_PATH}. Pastikan folder 'models/' berisi file .pkl dan 'model_meta.json'.")
         return
 
 
-# =============================
+
 # Halaman: About
-# =============================
 def render_about():
     st.title("About")
     st.write(
@@ -640,7 +630,6 @@ def render_about():
         
     )
 
-# 🔗 Link Instagram & Email — rata kiri
     st.markdown("""
     <div style="text-align: left; margin-top: 20px; margin-left: 10px;">
         <a href="https://www.instagram.com/novandry_a" target="_blank" style="text-decoration:none;">
@@ -660,9 +649,7 @@ def render_about():
     st.divider()
     st.caption("2025 Novandry Aprilian")
 
-# =============================
 # Router Halaman
-# =============================
 if nav == "Home":
     render_home()
 elif nav == "Prediction":
