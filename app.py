@@ -511,6 +511,9 @@ def render_prediction():
     # Feature Importance sesuai horizon yang dipilih
     st.divider()
     st.subheader(f"Feature Importance (Model Δ{horizon})")
+    st.markdown(
+        """Note: Feature importance menunjukkan seberapa besar pengaruh setiap variabel terhadap hasil prediksi. LightGBM menghitung importance berdasarkan frekuensi dan besarnya peningkatan “gain” (informasi atau pengurangan error) yang diperoleh ketika suatu fitur digunakan untuk melakukan pemisahan (split) pada pohon keputusan di dalam model."""
+    )
     try:
         mh, fh, th = load_model_for_horizon(horizon)
         imp = mh.feature_importances_
