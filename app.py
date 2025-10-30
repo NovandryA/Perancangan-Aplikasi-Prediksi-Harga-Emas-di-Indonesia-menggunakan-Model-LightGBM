@@ -55,25 +55,32 @@ CUSTOM_CSS = """
     /* Buttons spacing in forms */
     .stButton > button { border-radius: 10px; font-weight: 600; padding: 0.5rem 1rem; }
 
-        /* Warna tombol submit form (Prediksi) */
-    .stButton > button[kind="secondaryFormSubmit"],
-    .stButton > button[kind="primaryFormSubmit"] {
-        background-color: #00674f; /* hijau zamrud */
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        padding: 0.6rem 1.3rem;
-        transition: 0.2s;
-    }
-    .stButton > button[kind="secondaryFormSubmit"]:hover,
-    .stButton > button[kind="primaryFormSubmit"]:hover {
-        background-color: #004c38; /* warna lebih gelap saat hover */
-        color: white;
-    }
 </style>
 """
+
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Tombol Prediksi (warna oranye #FF991C) */
+div.stButton > button[kind="primaryFormSubmit"],
+div.stButton > button[kind="secondaryFormSubmit"] {
+    background-color: #FF991C;
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1.2rem;
+    transition: 0.2s;
+}
+
+/* Warna saat hover */
+div.stButton > button[kind="primaryFormSubmit"]:hover,
+div.stButton > button[kind="secondaryFormSubmit"]:hover {
+    background-color: #e07f00;
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # Helper function
@@ -280,7 +287,7 @@ def render_home():
         ("Input Variabel", "Masukkan 4 variabel harian: harga emas, kurs jual, kurs beli, BI‑Rate."),
         ("Validasi", "Sistem cek format, range, dan kelengkapan input."),
         ("Prediksi", "Model LightGBM menghasilkan proyeksi 7 hari ke depan."),
-        ("Visualisasi", "Hasil tampil sebagai grafik tren & tabel harian."),
+        ("Visualisasi", "Hasil tampil sebagai grafik perbandingan antara harga prediksi dan harga aktual."),
     ]
     for i, (t, d) in enumerate(steps):
         with cols[i]:
@@ -453,14 +460,14 @@ def render_prediction():
     plot_df_renamed = plot_df[cols_to_plot].rename(columns=rename_map)
     fig = go.Figure()
 
-# Garis Harga Prediksi 
+    # Garis Harga Prediksi 
     if "Harga Prediksi" in plot_df_renamed.columns:
         fig.add_trace(go.Scatter(
             x=plot_df_renamed.index,
             y=plot_df_renamed["Harga Prediksi"],
             mode="lines+markers",
             name="Harga Prediksi",
-            line=dict(color="#00674f", width=3),
+            line=dict(color="#FF991C", width=3),
             marker=dict(size=5)
         ))
 
