@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from io import BytesIO
 import plotly.graph_objects as go
+import re
 
 # validasi tanggal
 DATASET_START = date(2014, 1, 1)
@@ -57,30 +58,29 @@ CUSTOM_CSS = """
 
 </style>
 """
-
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 st.markdown("""
 <style>
-/* Tombol Prediksi (warna oranye #FF991C) */
-div.stButton > button[kind="primaryFormSubmit"],
-div.stButton > button[kind="secondaryFormSubmit"] {
-    background-color: #FF991C;
-    color: white;
-    font-weight: 600;
-    border: none;
-    border-radius: 10px;
-    padding: 0.6rem 1.2rem;
-    transition: 0.2s;
+/* container tombol kita sendiri */
+.button {
+    background-color: #FF991C !important;
+    color: white !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1.2rem !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+    cursor: pointer !important;
 }
 
-/* Warna saat hover */
-div.stButton > button[kind="primaryFormSubmit"]:hover,
-div.stButton > button[kind="secondaryFormSubmit"]:hover {
-    background-color: #e07f00;
-    color: white;
+/* efek hover */
+.button:hover {
+    background-color: #e07f00 !important;
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 
 # Helper function
@@ -115,10 +115,6 @@ def load_meta(meta_path: Path) -> dict:
     with open(meta_path, "r") as f:
         return json.load(f)
     
-from io import BytesIO
-import re
-import pandas as pd
-
 def _parse_bi_to_percent(x) -> float | None:
     if x is None or (isinstance(x, float) and pd.isna(x)):
         return None
@@ -216,6 +212,142 @@ def reconstruct_next(prev_level: float, pred: float, target_kind: str):
         delta = pred
     return next_level, delta
 
+# Fungsi membatasi input user
+
+# def validate_user_input(tanggal_input: date,
+#                         harga_emas_input: float,
+#                         usd_sell_input: float,
+#                         usd_buy_input: float,
+#                         bi_rate_input: float,
+#                         df_valid: pd.DataFrame):
+
+#     df_check = df_valid.copy()
+#     df_check["Date"] = pd.to_datetime(df_check["Date"]).dt.date
+
+#     row = df_check[df_check["Date"] == tanggal_input]
+#     if row.empty:
+#         return (
+#             False,
+#             "Tanggal tidak ditemukan di data referensi.",
+#             {}
+#         )
+
+#     ref_gold      = float(row["Gold_Price"].iloc[0])
+#     ref_usd_sell  = float(row["USD_Sell_Rate"].iloc[0])
+#     ref_usd_buy   = float(row["USD_Buy_Rate"].iloc[0])
+#     ref_bi_rate   = float(row["BI_Rate"].iloc[0])
+
+#     same_gold     = round(harga_emas_input, 2) == round(ref_gold, 2)
+#     same_usd_sell = round(usd_sell_input,  2) == round(ref_usd_sell, 2)
+#     same_usd_buy  = round(usd_buy_input,   2) == round(ref_usd_buy, 2)
+#     same_bi_rate  = round(bi_rate_input,   4) == round(ref_bi_rate * 100, 4) if ref_bi_rate < 1 else round(bi_rate_input, 2) == round(ref_bi_rate, 2)
+
+#     mismatches = {}
+
+#     if not same_gold:
+#         mismatches["Harga Emas (IDR/gram)"] = {
+#             "input": f"{harga_emas_input:,.2f}",
+#             "seharusnya": f"{ref_gold:,.2f}",
+#         }
+#     if not same_usd_sell:
+#         mismatches["Kurs USD/IDR — Jual"] = {
+#             "input": f"{usd_sell_input:,.2f}",
+#             "seharusnya": f"{ref_usd_sell:,.2f}",
+#         }
+#     if not same_usd_buy:
+#         mismatches["Kurs USD/IDR — Beli"] = {
+#             "input": f"{usd_buy_input:,.2f}",
+#             "seharusnya": f"{ref_usd_buy:,.2f}",
+#         }
+#     if not same_bi_rate:
+#         # Konversi ke persen (5,75%)
+#         input_percent = bi_rate_input
+#         ref_percent = ref_bi_rate * 100 if ref_bi_rate < 1 else ref_bi_rate
+#         mismatches["BI-Rate (%)"] = {
+#             "input": f"{input_percent:.2f}%",
+#             "seharusnya": f"{ref_percent:.2f}%"
+#         }
+
+#     if len(mismatches) > 0:
+#         return (
+#             False,
+#             "Data tidak valid. Ada nilai yang tidak sesuai dengan kondisi aktual hari tersebut.",
+#             mismatches
+#         )
+
+#     return (True, None, {})
+def validate_user_input(tanggal_input: date,
+                        harga_emas_input: float,
+                        usd_sell_input: float,
+                        usd_buy_input: float,
+                        bi_rate_input: float,
+                        df_valid: pd.DataFrame):
+    """
+    Memvalidasi input user berdasarkan data referensi (df_valid).
+    Mengembalikan (True, None, {}) jika semua valid.
+    Jika ada mismatch, kembalikan (False, pesan, dict detail).
+    """
+
+    df_check = df_valid.copy()
+    df_check["Date"] = pd.to_datetime(df_check["Date"]).dt.date
+
+    row = df_check[df_check["Date"] == tanggal_input]
+    if row.empty:
+        return (
+            False,
+            "Tanggal tidak ditemukan di data referensi.",
+            {}
+        )
+
+    # Ambil nilai referensi
+    ref_gold      = float(row["Gold_Price"].iloc[0])
+    ref_usd_sell  = float(row["USD_Sell_Rate"].iloc[0])
+    ref_usd_buy   = float(row["USD_Buy_Rate"].iloc[0])
+    ref_bi_rate   = float(row["BI_Rate"].iloc[0])
+
+    # Cek kesamaan nilai (toleransi dua desimal)
+    same_gold     = round(harga_emas_input, 2) == round(ref_gold, 2)
+    same_usd_sell = round(usd_sell_input,  2) == round(ref_usd_sell, 2)
+    same_usd_buy  = round(usd_buy_input,   2) == round(ref_usd_buy, 2)
+    same_bi_rate  = round(bi_rate_input,   4) == round(ref_bi_rate * 100, 4) if ref_bi_rate < 1 else round(bi_rate_input, 2) == round(ref_bi_rate, 2)
+
+    mismatches = {}
+
+    # Format tanpa koma ribuan
+    def fmt_number(val):
+        return f"{val:.2f}".replace(",", "")
+
+    if not same_gold:
+        mismatches["Harga Emas (IDR/gram)"] = {
+            "input": fmt_number(harga_emas_input),
+            "seharusnya": fmt_number(ref_gold),
+        }
+    if not same_usd_sell:
+        mismatches["Kurs USD/IDR — Jual"] = {
+            "input": fmt_number(usd_sell_input),
+            "seharusnya": fmt_number(ref_usd_sell),
+        }
+    if not same_usd_buy:
+        mismatches["Kurs USD/IDR — Beli"] = {
+            "input": fmt_number(usd_buy_input),
+            "seharusnya": fmt_number(ref_usd_buy),
+        }
+    if not same_bi_rate:
+        input_percent = bi_rate_input
+        ref_percent = ref_bi_rate * 100 if ref_bi_rate < 1 else ref_bi_rate
+        mismatches["BI-Rate (%)"] = {
+            "input": f"{input_percent:.2f}%",
+            "seharusnya": f"{ref_percent:.2f}%"
+        }
+
+    if len(mismatches) > 0:
+        return (
+            False,
+            "Data tidak valid. Ada nilai yang tidak sesuai dengan kondisi aktual hari tersebut.",
+            mismatches
+        )
+
+    return (True, None, {})
 
 # Sidebar Navigasi
 with st.sidebar:
@@ -241,8 +373,7 @@ def render_home():
     with left:
         st.title("Perancangan Aplikasi Prediksi Harga Emas")
         st.write(
-            "Aplikasi berbasis **Streamlit** untuk memprediksi harga emas di Indonesia menggunakan model **LightGBM**.\n"
-            "Saat ini Anda melihat **rancangan antarmuka**. Modul pemodelan akan dihubungkan kemudian."
+            "Aplikasi berbasis **Streamlit** untuk memprediksi harga emas di Indonesia menggunakan model **LightGBM**"
         )
 
         st.subheader("🏦 Makroekonomi dan Faktor-Faktor yang Mempengaruhi Harga Emas")
@@ -302,7 +433,6 @@ def render_home():
     )
 
 
-
 # Halaman: Prediction
 def render_prediction():
     st.title("Prediction")
@@ -348,7 +478,7 @@ def render_prediction():
         final_df = df_download[ordered_cols + other_cols]
 
         st.download_button(
-            label="⬇️ Download Excel (Harga Emas 2025)",
+            label="⬇️ Download data Harga Emas 2025 (1 Januari 2025 - 31 Oktober 2025) ",
             data=make_xlsx_bytes(final_df),
             file_name="harga_emas_2025.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -385,6 +515,25 @@ def render_prediction():
     # Validasi tambahan 
     if DATASET_START <= tanggal <= DATASET_END:
         st.error("Tanggal harus di luar periode dataset (pilih setelah 31 Desember 2024).")
+        return
+    
+    is_ok, err_msg, mismatches = validate_user_input(
+        tanggal_input = tanggal,
+        harga_emas_input = harga_emas,
+        usd_sell_input = usd_sell,
+        usd_buy_input = usd_buy,
+        bi_rate_input = bi_rate,
+        df_valid = df_valid
+    )
+
+    if not is_ok:
+        st.error(err_msg)
+        if mismatches:
+            for field, detail in mismatches.items():
+                st.markdown(
+                    f"- **{field}**: input `{detail['input']}` seharusnya `{detail['seharusnya']}`"
+                )
+
         return
 
     
