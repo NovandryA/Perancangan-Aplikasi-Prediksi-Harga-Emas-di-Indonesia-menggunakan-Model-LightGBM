@@ -10,14 +10,14 @@ from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 
 warnings.filterwarnings("ignore")
 
-# ====== KONFIGURASI ======
+# Konfigurasi
 DATASET_PATH = "Dataset_HargaEmas.xlsx"   
 MODELS_DIR   = Path("models")
 MODELS_DIR.mkdir(exist_ok=True)
 
-USE_LOG_FOR = [7]    # Δ7 pakai log-return (boleh kosongkan [] kalau ingin semua delta)
+USE_LOG_FOR = [7]    
 
-# ====== LOAD & CLEAN ======
+# Load & Clean data
 df = pd.read_excel(DATASET_PATH)
 df.columns = [c.strip().replace(" ", "_") for c in df.columns]
 date_col = df.columns[0]
@@ -28,7 +28,6 @@ df = df[df[date_col].notna()].reset_index(drop=True)
 assert "Gold_Price" in df.columns, "Kolom Gold_Price tidak ditemukan!"
 macro_cols = [c for c in ["USD_Buy_Rate","USD_Sell_Rate","BI_Rate"] if c in df.columns]
 
-# fitur single-shot (HANYA yang bisa diisi dari form)
 df["Month"]     = df[date_col].dt.month
 df["DayOfWeek"] = df[date_col].dt.dayofweek
 for col in ["Gold_Price"] + macro_cols:
@@ -58,12 +57,12 @@ def train_deltaN(N: int):
     y_series, reconstruct = make_target_and_reconstruct(dataN, N, use_log)
     dataN["Target"] = pd.to_numeric(y_series, errors="coerce")
 
-    # hanya fitur single-shot
+    
     features = [c for c in deploy_features if c in dataN.columns]
     for c in features + ["Target","Gold_Price"]:
         dataN[c] = pd.to_numeric(dataN[c], errors="coerce")
 
-    # drop NaN (termasuk baris paling ekor akibat shift(-N))
+    
     dataN = dataN.dropna(subset=features + ["Target","Gold_Price"]).reset_index(drop=True)
 
     X_full = dataN[features]
@@ -73,7 +72,7 @@ def train_deltaN(N: int):
     y_train, y_test = y_full.iloc[:split_idx], y_full.iloc[split_idx:]
     P_t_test = dataN["Gold_Price"].iloc[split_idx:].to_numpy()
 
-    # --- BO objective (RMSE dengan TimeSeriesSplit) ---
+    # --- Bayesian Optimization untuk hyperparameter tuning ---
     def cv_rmse(num_leaves,max_depth,feature_fraction,min_child_samples,
                 learning_rate,n_estimators,top_rate,other_rate,max_bin,min_data_in_bin):
         params = dict(
@@ -130,13 +129,13 @@ def train_deltaN(N: int):
         callbacks=[early_stopping(stopping_rounds=300), log_evaluation(period=0)]
     )
 
-    # ---- evaluasi delta/log
+    # evaluasi delta/log
     y_pred = model.predict(X_test)
     mae_delta  = mean_absolute_error(y_test, y_pred)
     rmse_delta = np.sqrt(mean_squared_error(y_test, y_pred))
     r2_delta   = r2_score(y_test, y_pred)
 
-    # ---- evaluasi level (rekonstruksi)
+    # evaluasi level (rekonstruksi)
     P_pred_next, _ = reconstruct(y_pred, P_t_test)
     P_true_next, _ = reconstruct(y_test, P_t_test)
     mae_level  = mean_absolute_error(P_true_next, P_pred_next)
@@ -155,14 +154,13 @@ def train_deltaN(N: int):
         "MAE_level": mae_level, "RMSE_level": rmse_level, "R2_level": r2_level
     }
 
-# ====== TRAIN ALL HORIZONS ======
+# Train semua horizon
 all_rows = []
 for N in range(1, 8):
     print(f"Training Δ{N} (single-shot)...")
     res = train_deltaN(N)
     all_rows.append(res)
 
-# ====== Tulis meta & metrics ======
 # model_meta.json
 meta = { f"Delta{r['N']}": {"features": r["features"], "target": r["target"]} for r in all_rows }
 with open(MODELS_DIR / "model_meta.json", "w") as f:
