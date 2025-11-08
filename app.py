@@ -429,7 +429,7 @@ def render_prediction():
                 "Tanggal Data",
                 value=min(date.today(), date(2025, 1, 1)),  
                 min_value=MIN_ALLOWED,                        
-                max_value=date(2025, 11, 10),             
+                max_value=date(2025, 11, 8),             
                 help="Input Tanggal minimal antara 1 Januari 2025 dan 10 November 2025."
             )
             harga_emas = st.number_input("Harga Emas (IDR/gram)", min_value=0.0, step=1000.0, format="%.2f")
