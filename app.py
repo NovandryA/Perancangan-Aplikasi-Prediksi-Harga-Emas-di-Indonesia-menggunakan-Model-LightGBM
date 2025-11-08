@@ -9,6 +9,24 @@ from io import BytesIO
 import plotly.graph_objects as go
 import re
 
+# Deskripsi halaman
+PAGE_DESCRIPTIONS = {
+    "Home": (
+        "Menampilkan tujuan aplikasi, dan informasi umum mengenai variabel dan algoritma yang digunakan"
+        "pada perancangan prediksi harga emas menggunakan model LightGBM."
+    ),
+    "Prediction": (
+        "Halaman utama untuk melakukan prediksi harga emas. Isi input variabel-variabel yang diperlukan"
+        "lalu lihat hasil prediksi hingga 7 hari ke depan."
+    ),
+    "Help": (
+        "Berisi panduan singkat dan link untuk mengunduh Manual Book aplikasi."
+    ),
+    "About": (
+        "Menampilkan informasi singkat mengenai tujuan perancangan, dosen pembimbing dan pengembang aplikasi"
+    ),
+}
+
 # validasi tanggal
 DATASET_START = date(2014, 1, 1)
 DATASET_END   = date(2024, 12, 31)
@@ -34,7 +52,6 @@ st.set_page_config(
     layout="wide",
 )
 
-
 # CSS Custom
 CUSTOM_CSS = """
 <style>
@@ -58,27 +75,6 @@ CUSTOM_CSS = """
 
 </style>
 """
-st.markdown("""
-<style>
-/* container tombol kita sendiri */
-.button {
-    background-color: #FF991C !important;
-    color: white !important;
-    font-weight: 600 !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.6rem 1.2rem !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
-    cursor: pointer !important;
-}
-
-/* efek hover */
-.button:hover {
-    background-color: #e07f00 !important;
-    color: white !important;
-}
-</style>
-""", unsafe_allow_html=True)
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
@@ -102,7 +98,7 @@ def placeholder_forecast_df(start: date, days: int = 7) -> pd.DataFrame:
     
     dates = pd.date_range(start=start + timedelta(days=1), periods=days, freq="D")
     # 
-    base = 1_000_000 
+    base = 1_000_000
     noise = np.cumsum(np.random.normal(scale=3000, size=days))
     trend = np.linspace(0, 20_000, days)
     y = base + trend + noise
@@ -159,8 +155,6 @@ def _parse_bi_to_percent(x) -> float | None:
                 v = float(s)
             except ValueError:
                 return None
-
-   
     return v * 100.0 if v is not None and v <= 1.0 else v
 
 def normalize_bi_rate_to_str(series: pd.Series) -> pd.Series:
@@ -212,70 +206,6 @@ def reconstruct_next(prev_level: float, pred: float, target_kind: str):
         delta = pred
     return next_level, delta
 
-# Fungsi membatasi input user
-
-# def validate_user_input(tanggal_input: date,
-#                         harga_emas_input: float,
-#                         usd_sell_input: float,
-#                         usd_buy_input: float,
-#                         bi_rate_input: float,
-#                         df_valid: pd.DataFrame):
-
-#     df_check = df_valid.copy()
-#     df_check["Date"] = pd.to_datetime(df_check["Date"]).dt.date
-
-#     row = df_check[df_check["Date"] == tanggal_input]
-#     if row.empty:
-#         return (
-#             False,
-#             "Tanggal tidak ditemukan di data referensi.",
-#             {}
-#         )
-
-#     ref_gold      = float(row["Gold_Price"].iloc[0])
-#     ref_usd_sell  = float(row["USD_Sell_Rate"].iloc[0])
-#     ref_usd_buy   = float(row["USD_Buy_Rate"].iloc[0])
-#     ref_bi_rate   = float(row["BI_Rate"].iloc[0])
-
-#     same_gold     = round(harga_emas_input, 2) == round(ref_gold, 2)
-#     same_usd_sell = round(usd_sell_input,  2) == round(ref_usd_sell, 2)
-#     same_usd_buy  = round(usd_buy_input,   2) == round(ref_usd_buy, 2)
-#     same_bi_rate  = round(bi_rate_input,   4) == round(ref_bi_rate * 100, 4) if ref_bi_rate < 1 else round(bi_rate_input, 2) == round(ref_bi_rate, 2)
-
-#     mismatches = {}
-
-#     if not same_gold:
-#         mismatches["Harga Emas (IDR/gram)"] = {
-#             "input": f"{harga_emas_input:,.2f}",
-#             "seharusnya": f"{ref_gold:,.2f}",
-#         }
-#     if not same_usd_sell:
-#         mismatches["Kurs USD/IDR — Jual"] = {
-#             "input": f"{usd_sell_input:,.2f}",
-#             "seharusnya": f"{ref_usd_sell:,.2f}",
-#         }
-#     if not same_usd_buy:
-#         mismatches["Kurs USD/IDR — Beli"] = {
-#             "input": f"{usd_buy_input:,.2f}",
-#             "seharusnya": f"{ref_usd_buy:,.2f}",
-#         }
-#     if not same_bi_rate:
-#         # Konversi ke persen (5,75%)
-#         input_percent = bi_rate_input
-#         ref_percent = ref_bi_rate * 100 if ref_bi_rate < 1 else ref_bi_rate
-#         mismatches["BI-Rate (%)"] = {
-#             "input": f"{input_percent:.2f}%",
-#             "seharusnya": f"{ref_percent:.2f}%"
-#         }
-
-#     if len(mismatches) > 0:
-#         return (
-#             False,
-#             "Data tidak valid. Ada nilai yang tidak sesuai dengan kondisi aktual hari tersebut.",
-#             mismatches
-#         )
-
-#     return (True, None, {})
 def validate_user_input(tanggal_input: date,
                         harga_emas_input: float,
                         usd_sell_input: float,
@@ -349,33 +279,28 @@ def validate_user_input(tanggal_input: date,
 
     return (True, None, {})
 
+if "nav" not in st.session_state:
+    st.session_state["nav"] = "Home"
+
 # Sidebar Navigasi
 with st.sidebar:
     st.header("🪙 Prediksi Harga Emas Menggunakan LightGBM")
-    nav = st.radio("Navigasi", ["Home", "Prediction", "About"], index=0)
+    nav = st.radio("Navigasi", ["Home", "Help", "Prediction",  "About"], index=0)
 
     st.divider()
 
-    with open("Manual Book.pdf", "rb") as f:
-        pdf_data = f.read()
-    st.download_button(
-        label="📘 Download Manual Book",
-        data=pdf_data,
-        file_name="Manual Book.pdf",
-        mime="application/pdf",
-        use_container_width=True)
-
+    st.markdown(f"_{PAGE_DESCRIPTIONS[nav]}_")
 
 # Halaman: Home
 def render_home():
-    left, right = st.columns([1.1, 1])
+    st.title("Perancangan Aplikasi Prediksi Harga Emas")
+    st.write(
+        "Aplikasi berbasis **Streamlit** untuk memprediksi harga emas di Indonesia menggunakan model **LightGBM**"
+    )
 
-    with left:
-        st.title("Perancangan Aplikasi Prediksi Harga Emas")
-        st.write(
-            "Aplikasi berbasis **Streamlit** untuk memprediksi harga emas di Indonesia menggunakan model **LightGBM**"
-        )
+    col_main, col_help = st.columns([3, 1], gap="large")
 
+    with col_main:
         st.subheader("🏦 Makroekonomi dan Faktor-Faktor yang Mempengaruhi Harga Emas")
         st.markdown(
             """
@@ -397,7 +322,8 @@ def render_home():
         st.subheader("📈 BI-Rate")
         st.markdown(
             """
-            BI-Rate adalah suku bunga acuan yang ditetapkan oleh Bank Indonesia untuk mengendalikan inflasi dan menjaga stabilitas moneter. Kenaikan BI-Rate biasanya menekan harga emas karena investor cenderung beralih ke instrumen keuangan yang menawarkan bunga lebih tinggi.
+            BI-Rate adalah suku bunga acuan yang ditetapkan oleh Bank Indonesia untuk mengendalikan inflasi dan menjaga stabilitas moneter. 
+            Kenaikan BI-Rate biasanya menekan harga emas karena investor cenderung beralih ke instrumen keuangan yang menawarkan bunga lebih tinggi.
             Sebaliknya, ketika BI-Rate turun, minat terhadap emas meningkat karena biaya peluang menyimpan emas menjadi lebih rendah.
             """
         )
@@ -405,9 +331,17 @@ def render_home():
         st.subheader("🤖 LightGBM")
         st.markdown(
             """
-            Dalam aplikasi ini digunakan algoritma Light Gradient Boosting Machine (LightGBM) — sebuah metode pembelajaran mesin (machine learning) yang dirancang untuk melakukan prediksi secara cepat dan efisien. LightGBM bekerja dengan membangun serangkaian decision tree secara bertahap, di mana setiap pohon baru berfokus memperbaiki kesalahan dari pohon sebelumnya. 
+            Dalam aplikasi ini digunakan algoritma Light Gradient Boosting Machine (LightGBM) — sebuah metode pembelajaran mesin (machine learning) yang dirancang untuk melakukan prediksi secara cepat dan efisien. 
+            LightGBM bekerja dengan membangun serangkaian decision tree secara bertahap, di mana setiap pohon baru berfokus memperbaiki kesalahan dari pohon sebelumnya. 
             Dengan teknik optimasi seperti Gradient-based One-Side Sampling (GOSS) LightGBM mampu memberikan hasil prediksi yang akurat meskipun data berukuran besar.
             """
+        )
+
+    with col_help:
+        st.markdown("### Butuh Panduan?")
+        st.info(
+            "Untuk memahami alur aplikasi ini silahkan pergi ke halaman **'Help'** untuk membaca panduan lengkap. Halaman Help dapat diakses melalui sidebar di sebelah kiri.",
+            icon="💡"
         )
 
     st.divider()
@@ -416,8 +350,8 @@ def render_home():
     cols = st.columns(4)
     steps = [
         ("Input Variabel", "Masukkan 4 variabel harian: harga emas, kurs jual, kurs beli, BI‑Rate."),
-        ("Validasi", "Sistem cek format, range, dan kelengkapan input."),
-        ("Prediksi", "Model LightGBM menghasilkan proyeksi 7 hari ke depan."),
+        ("Validasi", "Sistem memeriksa format, range, dan kelengkapan input."),
+        ("Prediksi", "Model LightGBM menghasilkan proyeksi hingga 7 hari ke depan."),
         ("Visualisasi", "Hasil tampil sebagai grafik perbandingan antara harga prediksi dan harga aktual."),
     ]
     for i, (t, d) in enumerate(steps):
@@ -449,13 +383,11 @@ def render_prediction():
         if "df_valid" in globals() and isinstance(df_valid, pd.DataFrame) and not df_valid.empty:
             df_download = df_valid.copy()
         else:
-          
             df_download = pd.read_excel("Dataset_HargaEmas_2025.xlsx")  
     except Exception as e:
         st.warning(f"Tidak bisa memuat dataset 2025: {e}")
 
     if df_download is not None and not df_download.empty:
-       
         rename_map = {}
         if "Tanggal" in df_download.columns:   rename_map["Tanggal"]    = "date"
         if "Gold_Price" in df_download.columns:rename_map["Gold_Price"] = "gold_price"
@@ -478,7 +410,7 @@ def render_prediction():
         final_df = df_download[ordered_cols + other_cols]
 
         st.download_button(
-            label="⬇️ Download data Harga Emas 2025 (1 Januari 2025 - 31 Oktober 2025) ",
+            label="⬇️ Download data Harga Emas 2025 (1 Januari 2025 - 10 November 2025)",
             data=make_xlsx_bytes(final_df),
             file_name="harga_emas_2025.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -495,10 +427,10 @@ def render_prediction():
         with c1:
             tanggal = st.date_input(
                 "Tanggal Data",
-                value=min(date.today(), date(2025, 10, 24)),  
+                value=min(date.today(), date(2025, 1, 1)),  
                 min_value=MIN_ALLOWED,                        
-                max_value=date(2025, 10, 24),                 
-                help="Tanggal harus antara 1 Januari 2025 dan 24 Oktober 2025."
+                max_value=date(2025, 11, 10),             
+                help="Input Tanggal minimal antara 1 Januari 2025 dan 10 November 2025."
             )
             harga_emas = st.number_input("Harga Emas (IDR/gram)", min_value=0.0, step=1000.0, format="%.2f")
             usd_sell   = st.number_input("Kurs USD/IDR — Jual",   min_value=0.0, step=1.0,   format="%.2f")
@@ -588,11 +520,10 @@ def render_prediction():
     if df_valid is not None:
         actual_slice = (
             df_valid[(df_valid["Date"] >= plot_df.index.min()) &
-                     (df_valid["Date"] <= plot_df.index.max())
-                     ][["Date","Gold_Price"]]
-                     .set_index("Date")
-                     .sort_index()
-                     
+            (df_valid["Date"] <= plot_df.index.max())
+            ][["Date","Gold_Price"]]
+            .set_index("Date")
+            .sort_index()
         )
         plot_df = plot_df.join(actual_slice, how="left")
 
@@ -721,7 +652,7 @@ def render_prediction():
         missing = [c for c in feat_cols if c not in X_single.columns]
         if missing:
             st.error(f"Model Δ{h} memerlukan fitur {missing}. Model kamu kemungkinan dilatih 'history-aware'. "
-                     "Gunakan model single-shot (fitur: Month, DayOfWeek, Gold_Price, USD_Buy_Rate, USD_Sell_Rate, BI_Rate).")
+            "Gunakan model single-shot (fitur: Month, DayOfWeek, Gold_Price, USD_Buy_Rate, USD_Sell_Rate, BI_Rate).")
             return
 
         X_use = X_single.reindex(columns=feat_cols)
@@ -749,43 +680,6 @@ def render_prediction():
         "BI_Rate": float(bi_rate),
     }
     X_single = pd.DataFrame([x_dict])
-
-    # ----- Prediksi Δ1..Δh & rekonstruksi level -----
-    levels, deltas = [], []
-    prev_level = float(harga_emas)
-
-    try:
-        meta = load_meta(META_PATH)  
-    except Exception as e:
-        st.error(f"Metadata model tidak ditemukan ({META_PATH}). Pastikan folder 'models/' berisi file .pkl dan 'model_meta.json'.\nDetail: {e}")
-        return
-
-    for h in range(1, horizon + 1):
-        try:
-            model, feat_cols, target_kind = load_model_for_horizon(h)
-        except Exception as e:
-            st.error(f"Model Δ{h} tidak bisa dimuat. Pastikan file ada di folder 'models/'.\nDetail: {e}")
-            return
-
-        # align kolom (harus 6 fitur single-shot)
-        missing = [c for c in feat_cols if c not in X_single.columns]
-        if missing:
-            st.error(f"Model Δ{h} memerlukan fitur {missing}. Model kamu kemungkinan dilatih 'history-aware'. "
-                     "Gunakan model single-shot (fitur: Month, DayOfWeek, Gold_Price, USD_Buy_Rate, USD_Sell_Rate, BI_Rate).")
-            return
-
-        X_use = X_single.reindex(columns=feat_cols)
-        pred = float(model.predict(X_use)[0])
-        next_level, d = reconstruct_next(prev_level, pred, target_kind)
-        levels.append(next_level)
-        deltas.append(d)
-        prev_level = next_level
-
-    if not META_PATH.exists():
-        st.error(f"Metadata model tidak ditemukan: {META_PATH}. Pastikan folder 'models/' berisi file .pkl dan 'model_meta.json'.")
-        return
-
-
 
 # Halaman: About
 def render_about():
@@ -815,10 +709,52 @@ def render_about():
     st.divider()
     st.caption("2025 Novandry Aprilian")
 
+
+# Halaman: Help
+def render_help():
+    st.title("Help")
+    st.write(
+        """
+        Halaman ini berisi panduan singkat penggunaan aplikasi serta link untuk
+        mengunduh manual book lengkap.
+        """
+    )
+
+    st.subheader("📘 Manual Book Aplikasi")
+    st.write(
+        """
+        Jika Anda membutuhkan panduan lebih detail mengenai cara penggunaan aplikasi,
+        silakan unduh dokumen manual book pada tombol berikut:
+        """
+    )
+
+    with open("Manual Book.pdf", "rb") as f:
+        pdf_data = f.read()
+
+    st.download_button(
+        label="⬇️ Download Manual Book",
+        data=pdf_data,
+        file_name="Manual Book.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+
+    st.divider()
+    st.markdown(
+        """
+        **Tip Singkat Penggunaan Aplikasi:**
+        - Buka menu **Prediction** untuk melakukan prediksi harga emas.
+        - Pastikan input variabel sesuai dengan data aktual pada tanggal yang dipilih.
+        - Jika masih bingung, baca Manual Book untuk langkah yang lebih rinci.
+        """
+    )
+
 # Router Halaman
 if nav == "Home":
     render_home()
 elif nav == "Prediction":
     render_prediction()
+elif nav == "Help":
+    render_help()
 else:
     render_about()
